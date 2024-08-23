@@ -1,0 +1,19 @@
+﻿docker ps
+
+docker exec -it 1c35f5c00358 bash
+
+psql -U postgres
+
+\l
+
+\c CatalogDb
+
+\l
+
+-----q to quit
+
+\c CatalogDB
+
+\d
+
+SELECT * FROM mt_doc_product;
