@@ -6,14 +6,15 @@ public class CatalogInitialData : IInitialData
 {
     public async Task Populate(IDocumentStore store, CancellationToken cancellation)
     {
-        using var session = store.LightweightSession();
+            using var session = store.LightweightSession();
+       
+            if (await session.Query<Product>().AnyAsync())
+                return;
 
-        if (await session.Query<Product>().AnyAsync())
-            return;
-
-        // Marten UPSERT will cater for existing records
-        session.Store<Product>(GetPreconfiguredProducts());
-        await session.SaveChangesAsync();
+            // Marten UPSERT will cater for existing records
+            session.Store<Product>(GetPreconfiguredProducts());
+            await session.SaveChangesAsync();
+        
     }
 
     private static IEnumerable<Product> GetPreconfiguredProducts() => new List<Product>()
