@@ -1,0 +1,42 @@
+public async Task<List<string>> ProcessUrlsWithCustomMethods(List<string> urls, string authToken)
+{
+    var jsonStrings = new ConcurrentBag<string>();
+    var parallelOptions = new ParallelOptions
+    {
+        MaxDegreeOfParallelism = 20 // Adjust based on your API rate limits
+    };
+
+    await Parallel.ForEachAsync(urls, parallelOptions, async (url, cancellationToken) =>
+    {
+        try
+        {
+            List<string> result;
+            
+            if (_xvaStaticDataConfig.PaginatedURL.Equals("True"))
+            {
+                result = await _genericApiHelper.GetAllDataFromPaginatedApiAsync(
+                    authToken, 
+                    _xvaStaticDataConfig.BaseURL, 
+                    url);
+            }
+            else
+            {
+                var singleResult = await _genericApiHelper.GetAllDataApiAsync(
+                    authToken, 
+                    _xvaStaticDataConfig.BaseURL + url);
+                result = new List<string> { singleResult };
+            }
+            
+            foreach (var json in result)
+            {
+                jsonStrings.Add(json);
+            }
+        }
+        catch (Exception ex)
+        {
+            jsonStrings.Add($"Error processing {url}: {ex.Message}");
+        }
+    });
+
+    return jsonStrings.ToList();
+}
