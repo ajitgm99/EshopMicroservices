@@ -1,0 +1,35 @@
+public async Task<List<string>> ProcessUrlsSafely(List<string> urls, string authToken)
+{
+    var results = new ConcurrentBag<string>();
+    var options = new ParallelOptions { MaxDegreeOfParallelism = 20 };
+
+    // Process each URL separately without complex closures
+    await Parallel.ForEachAsync(urls, options, async (url, ct) =>
+    {
+        try
+        {
+            string result;
+            if (_xvaStaticDataConfig.PaginatedURL.Equals("True"))
+            {
+                var paginatedResults = await _genericApiHelper.GetAllDataFromPaginatedApiAsync(
+                    authToken, 
+                    _xvaStaticDataConfig.BaseURL, 
+                    url);
+                result = string.Join(Environment.NewLine, paginatedResults);
+            }
+            else
+            {
+                result = await _genericApiHelper.GetAllDataApiAsync(
+                    authToken, 
+                    _xvaStaticDataConfig.BaseURL + url);
+            }
+            results.Add(result);
+        }
+        catch (Exception ex)
+        {
+            results.Add($"Error processing {url}: {ex.Message}");
+        }
+    });
+
+    return results.ToList();
+}
