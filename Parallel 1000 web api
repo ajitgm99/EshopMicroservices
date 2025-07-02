@@ -1,0 +1,48 @@
+using System.Net.Http.Headers;
+using System.Collections.Concurrent;
+
+public async Task<List<string>> ProcessApiRequestsInParallelWithResults()
+{
+    const int totalRequests = 10000;
+    const string apiBaseUrl = "https://api.example.com/endpoint/";
+    const string authToken = "your-auth-token-here";
+    
+    // Thread-safe collection for results
+    var results = new ConcurrentBag<string>();
+    
+    using var httpClient = new HttpClient();
+    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+    
+    var requestItems = Enumerable.Range(1, totalRequests)
+                                .Select(i => $"{apiBaseUrl}{i}")
+                                .ToList();
+    
+    var parallelOptions = new ParallelOptions
+    {
+        MaxDegreeOfParallelism = 20 // Adjust based on your needs
+    };
+    
+    await Parallel.ForEachAsync(requestItems, parallelOptions, async (url, cancellationToken) =>
+    {
+        try
+        {
+            var response = await httpClient.GetAsync(url, cancellationToken);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                results.Add(content); // Add successful response to results
+            }
+            else
+            {
+                results.Add($"Error for {url}: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            results.Add($"Exception for {url}: {ex.Message}");
+        }
+    });
+    
+    return results.ToList();
+}
