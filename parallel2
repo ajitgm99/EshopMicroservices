@@ -1,0 +1,43 @@
+using System.Net.Http.Headers;
+using System.Collections.Concurrent;
+
+public async Task<List<(string Url, string Result)>> ProcessUrlListWithResults(
+    List<string> urls, 
+    string authToken,
+    int maxDegreeOfParallelism = 20)
+{
+    // Thread-safe collection for results (stores both URL and response)
+    var results = new ConcurrentBag<(string Url, string Result)>();
+    
+    using var httpClient = new HttpClient();
+    httpClient.DefaultRequestHeaders.Authorization = 
+        new AuthenticationHeaderValue("Bearer", authToken);
+    
+    // Configure parallel processing
+    var parallelOptions = new ParallelOptions
+    {
+        MaxDegreeOfParallelism = maxDegreeOfParallelism
+    };
+    
+    await Parallel.ForEachAsync(urls, parallelOptions, async (url, cancellationToken) =>
+    {
+        try
+        {
+            var response = await httpClient.GetAsync(url, cancellationToken);
+            var content = await response.Content.ReadAsStringAsync();
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                content = $"ERROR: {response.StatusCode} - {content}";
+            }
+            
+            results.Add((url, content));
+        }
+        catch (Exception ex)
+        {
+            results.Add((url, $"EXCEPTION: {ex.Message}"));
+        }
+    });
+    
+    return results.ToList();
+}
